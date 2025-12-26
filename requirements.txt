@@ -1,0 +1,8 @@
+flask
+flask-cors
+openai
+pyngrok
+pandas
+sentence-transformers
+faiss-cpu
+gunicorn
