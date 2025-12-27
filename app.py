@@ -17,7 +17,7 @@ openai.api_key = OPENAI_API_KEY
 # =====================================================
 # تأكدي أن هذه الملفات موجودة داخل الريبو على GitHub
 FILE_1 = "data/AI_Broadcast_Log.xlsx"
-FILE_2 = "data/broadcast_ai_knowledge_Bilingual.xlsx"
+FILE_2 = "data/broadcast_ai_knowledge_Bilingual (3).xlsx"
 TEMPLATE_PATH = "templates"  # يجب وضع chat.html هنا
 
 # =====================================================
@@ -116,3 +116,4 @@ if __name__ == "__main__":
     # Render يعطي المنفذ من متغير البيئة PORT
     port = int(os.environ.get("PORT", 10000))
     app.run(host="0.0.0.0", port=port)
+
