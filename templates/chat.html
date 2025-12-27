@@ -1,0 +1,449 @@
+login_template = '''
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>تسجيل الدخول</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{ --primary:#9d0a0e; }
+body{ font-family:"Tajawal","Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",Arial,sans-serif; background:#f4f4f4; height:100vh; margin:0; display:flex; align-items:center; justify-content:center; }
+.box{ background:#fff; padding:28px; border-radius:16px; box-shadow:0 4px 20px rgba(0,0,0,.12); width:340px; text-align:center; }
+.box img{
+  height:56px;  /* أصغر */
+  width:auto;
+  object-fit:contain;
+  border-radius:0;
+  margin-bottom:16px;
+}
+.in{ width:92%; padding:12px; margin:8px 0; border-radius:10px; border:1px solid #ddd; }
+.btn{ width:95%; padding:12px; background:var(--primary); color:#fff; border:none; border-radius:24px; cursor:pointer; }
+.err{ color:#b00020; margin:8px 0 0; }
+</style>
+</head>
+<body>
+<div class="box">
+    <img src="{{ url_for('static', filename='logo.png') }}" alt="logo">
+    <h3>تسجيل الدخول</h3>
+    {% if error %}<div class="err">{{ error }}</div>{% endif %}
+    <form method="post">
+        <input class="in" type="text" name="username" placeholder="اسم المستخدم" required>
+        <input class="in" type="password" name="password" placeholder="كلمة المرور" required>
+        <button class="btn" type="submit">دخول</button>
+    </form>
+</div>
+</body>
+</html>
+'''
+
+html_template = '''
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8" />
+<title>Almamlaka TV chatbot</title>
+<link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#101010; --fg:#ddd;
+  --panel:#141414; --msgs:#2a2a2a;
+  --botbg:#303030; --botfg:#eee;
+  --sep:#333; --primary:#9d0a0e; --gap:12px;
+  --sidebar:#0f0f0f; --border:#222; --input-bg:#1f1f1f; --placeholder:#aaa;
+  --plus-bg:#1f1f1f;
+  /* عناصر القائمة الجانبية (تُبدّل في الوضع الفاتح عبر JS) */
+  --ctl-bg:#2a2a2a; --ctl-fg:#ddd; --ctl-border:#2c2c2c;
+}
+html,body{ height:100%; margin:0; font-family:"Tajawal","Segoe UI Emoji","Apple Color Emoji","Noto Color Emoji",Arial,sans-serif; background:var(--bg); color:var(--fg); overflow:hidden; }
+.layout{ display:flex; height:100vh; width:100vw; }
+
+/* Sidebar */
+.sidebar{ width:290px; min-width:240px; background:var(--sidebar); border-inline-end:1px solid var(--border); display:flex; flex-direction:column; order:1; transition:transform .2s ease,width .2s ease; }
+.sidebar.collapsed{ transform:translateX(-100%); width:0; min-width:0; }
+.sb-header{ display:flex; align-items:center; gap:10px; padding:12px; border-bottom:1px solid var(--border); }
+.sb-header img{
+  height:40px;
+  width:auto;
+  object-fit:contain;
+  border-radius:0;
+  background:transparent;
+  display:block;
+}
+
+/* Chats list */
+.sb-section{ padding:10px 14px; font-weight:700; color:#aaa; font-size:.9rem; }
+.sb-list{ flex:1; overflow:auto; padding:0 10px 12px 10px; }
+.chat-item{ display:flex; align-items:center; gap:8px; padding:10px; margin:6px 0; border-radius:10px; background:#1a1a1a; color:#ddd; text-decoration:none; }
+.chat-item.active{ outline:2px solid var(--primary); }
+.chat-title{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; display:block; min-height:1.1em; }
+
+/* New chat */
+.new-chat{ padding:10px 12px; border-top:1px solid var(--border); }
+.new-chat .btn{ width:100%; padding:10px 12px; border:none; border-radius:10px; cursor:pointer; font-weight:600; background:var(--primary); color:#fff; }
+
+/* User menu */
+.user-row{ padding:12px; border-top:1px solid var(--border); display:flex; align-items:center; justify-content:space-between; position:relative; }
+.user-btn{ background:var(--ctl-bg); color:var(--ctl-fg); padding:8px 12px; border-radius:10px; cursor:pointer; border:1px solid var(--ctl-border); width:100%; text-align:center; }
+.user-menu{ position:absolute; left:12px; right:12px; bottom:56px; background:var(--ctl-bg); border:1px solid var(--ctl-border); border-radius:12px; width:auto; padding:12px; display:none; z-index:45; color:var(--ctl-fg); }
+.user-menu .row{ display:flex; flex-direction:column; gap:6px; margin:8px 0; }
+.user-menu label{ color:var(--ctl-fg); }
+.user-menu select,.user-menu button{ background:var(--ctl-bg); color:var(--ctl-fg); border:1px solid var(--ctl-border); border-radius:8px; padding:10px; cursor:pointer; }
+
+/* Main */
+.main{ flex:1; display:flex; flex-direction:column; background:var(--panel); position:relative; order:2; }
+.main.full{ width:100vw; }
+.chat-header{ background:var(--primary); color:#fff; padding:10px 16px; display:flex; align-items:center; justify-content:center; position:relative; }
+.title{ font-weight:bold; }
+.sidebar-toggle{ position:absolute; right:12px; top:6px; background:transparent; border:none; font-size:22px; color:#fff; cursor:pointer; }
+.sidebar-toggle::after{ content:"☰"; }
+
+/* Kebab */
+.kebab{ position:absolute; left:10px; top:4px; color:#fff; font-size:28px; line-height:1; cursor:pointer; background:transparent; border:none; user-select:none; }
+.kebab-menu{ position:absolute; left:10px; top:40px; background:var(--ctl-bg); border:1px solid var(--ctl-border); border-radius:12px; width:240px; padding:8px; display:none; z-index:45; }
+.kebab-menu button{ width:100%; background:var(--ctl-bg); color:var(--ctl-fg); border:1px solid var(--ctl-border); border-radius:8px; padding:10px; text-align:start; cursor:pointer; margin:6px 0; }
+
+/* Messages */
+.chat-messages{ flex:1; padding:18px; overflow:auto; background:var(--msgs); scrollbar-width:thin; scrollbar-color:var(--primary) transparent; }
+.chat-messages::-webkit-scrollbar{ width:8px; } .chat-messages::-webkit-scrollbar-thumb{ background:var(--primary); border-radius:4px; }
+.message{ margin-bottom:var(--gap); max-width:75%; padding:14px 16px; border-radius:14px; line-height:1.6; font-size:1.05em; white-space:pre-wrap; opacity:0; transform:translateY(8px); animation:fadeIn .15s forwards; display:flex; flex-direction:column; gap:8px; }
+.user-message{ background:var(--primary); color:#fff; margin-inline-start:auto; border-bottom-right-radius:4px; }
+.bot-message{ background:var(--botbg); color:var(--botfg); margin-inline-end:auto; border-bottom-left-radius:4px; }
+.msg-actions{ display:flex; gap:8px; font-size:.85em; opacity:.9; flex-wrap:wrap; }
+.msg-actions button{ background:#2b2b2b;border:1px solid #3a3a3a;color:#eee;cursor:pointer;padding:6px 10px;border-radius:8px;display:flex;align-items:center;gap:8px }
+.msg-actions button:hover{background:#3a3a3a;border-color:#4a4a4a}
+
+/* Input row */
+.chat-input{ display:flex; gap:8px; align-items:center; padding:12px; background:var(--panel); border-top:1px solid var(--sep); }
+.input{
+  flex:1; padding:14px 16px; border-radius:22px; border:1px solid --border;
+  background:var(--input-bg); color:var(--fg); outline:none;
+  font-size:1.2rem;
+}
+.input::placeholder{ color:var(--placeholder); }
+.send{ background:var(--primary); color:#fff; border:none; padding:10px 16px; border-radius:18px; font-weight:bold; }
+
+/* Plus button */
+.plus{ width:42px; height:42px; border-radius:12px; border:1px solid var(--border); background:var(--plus-bg); color:#fff; font-size:22px; display:flex; align-items:center; justify-content:center; cursor:pointer; position:relative; }
+.plus::after{ content:"+"; }
+.plus-menu{ position:absolute; bottom:50px; right:0; background:var(--ctl-bg); border:1px solid var(--ctl-border); border-radius:10px; min-width:180px; padding:8px; display:none; flex-direction:column; z-index:10; }
+.plus-menu button{ background:var(--ctl-bg); color:var(--ctl-fg); border:none; padding:10px; border-radius:8px; text-align:start; cursor:pointer; margin:4px 0; }
+
+/* Welcome */
+.welcome{ max-width:75%; background:#223; color:#cfe; padding:14px 16px; border-radius:14px; margin:12px 0; border:1px dashed #446; }
+
+/* Generic icon holder */
+.icon{ width:18px; height:18px; display:inline-block }
+.icon svg{ width:18px; height:18px; stroke:currentColor; fill:none; stroke-width:2; stroke-linecap:round; stroke-linejoin:round }
+
+@keyframes fadeIn{ to{ opacity:1; transform:none; } }
+</style>
+</head>
+<body>
+<div class="layout">
+    <!-- Sidebar -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sb-header">
+            <img src="{{ url_for('static', filename='logo.png') }}" alt="logo">
+        </div>
+
+        <div class="sb-section" id="sbSectionLabel">المحادثات</div>
+        <div class="sb-list">
+            {% for cid, title in chats %}
+            <a class="chat-item {% if cid == active_id %}active{% endif %}" href="{{ url_for('switch_chat', chat_id=cid) }}" title="{{ title }}">
+                {% if title.strip() %}<span class="chat-title">{{ title }}</span>{% else %}<span class="chat-title"></span>{% endif %}
+            </a>
+            {% endfor %}
+        </div>
+
+        <div class="new-chat">
+            <form action="{{ url_for('new_chat') }}" method="post">
+                <button class="btn" id="newChatBtn" type="submit">محادثة جديدة</button>
+            </form>
+        </div>
+
+        <div class="user-row">
+            <div id="userMenuBtn" class="user-btn">{{ username }}</div>
+            <div id="userMenu" class="user-menu" aria-hidden="true">
+                <div class="row">
+                    <label id="lblLanguage">اللغة</label>
+                    <select id="languageSelect">
+                        <option value="ar">العربية</option>
+                        <option value="en" selected>English</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <label id="lblTheme">الوضع</label>
+                    <select id="themeSelect">
+                        <option value="dark" selected>غامق</option>
+                        <option value="light">فاتح</option>
+                    </select>
+                </div>
+                <div class="row">
+                    <form action="{{ url_for('archive_active') }}" method="post">
+                        <button type="submit" id="archiveBtn">أرشفة المحادثة الحالية</button>
+                    </form>
+                </div>
+                <div class="row">
+                    <form action="{{ url_for('logout') }}" method="get">
+                        <button type="submit" id="logoutBtn">تسجيل الخروج</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </aside>
+
+    <!-- Main -->
+    <main class="main" id="main" role="application" aria-label="Chatbot">
+        <header class="chat-header">
+            <button id="toggleSidebarBtn" class="sidebar-toggle" title="إظهار/إخفاء"></button>
+            <div class="title" id="appTitle">Almamlaka TV chatbot</div>
+           <a id="dashboardBtn" href="https://lookerstudio.google.com/s/gYklE99viaY" target="_blank"
+   style="
+     position:absolute;
+     left:50px;   /* أو غيّر الرقم حسب المسافة المطلوبة من اليسار */
+     top:4px;     /* نفس ارتفاع الثلاث نقاط */
+     font-size:16px;
+     font-weight:bold;
+     text-decoration:none;
+     color:white;
+   ">Dashboard</a>
+
+            <div id="kebabBtn" class="kebab" title="خيارات">⋯</div>
+            <div id="kebabMenu" class="kebab-menu" aria-hidden="true">
+                <button id="shareChatBtn" type="button">مشاركة المحادثة</button>
+                <button id="copyChatBtn" type="button">نسخ المحادثة</button>
+                <button id="downloadChatBtn" type="button">تنزيل المحادثة .txt</button>
+            </div>
+        </header>
+
+        <section id="msgs" class="chat-messages" tabindex="0" aria-live="polite" aria-atomic="false" role="log">
+            {% if show_welcome %}<div id="welcome" class="welcome">Welcome! Type a question to start.</div>{% endif %}
+            {% for m in history %}
+                {% if m.role == 'user' %}
+                <div class="message user-message"><div class="msg-text">{{ m.content }}</div></div>
+                {% elif m.role == 'bot' %}
+                <div class="message bot-message">
+                    <div class="msg-text">{{ m.content | safe }}</div>
+                    <div class="msg-actions">
+                        <button onclick="copyText(this)">
+                          <span class="icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><rect x="4" y="4" width="11" height="11" rx="2"/></svg>
+                          </span>نسخ
+                        </button>
+                        <button onclick="shareMsg(this)">
+                          <span class="icon" aria-hidden="true">
+                            <svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M7 10l5-5 5 5"/><path d="M19 19H5"/></svg>
+                          </span>مشاركة
+                        </button>
+                    </div>
+                </div>
+                {% elif m.role == 'image' %}
+                <div class="message bot-message img-bubble"><img src="{{ m.content }}" alt="صورة"/></div>
+                {% endif %}
+            {% endfor %}
+        </section>
+
+        <form id="chatForm" class="chat-input" onsubmit="return sendMsg(event)" autocomplete="off">
+            <div class="plus" id="plusBtn" title="قائمة"></div>
+            <div class="plus-menu" id="plusMenu">
+                <button type="button" id="pickImage">إضافة صورة</button>
+                <button type="button" id="attachFile">إرفاق ملف</button>
+            </div>
+            <input id="q" name="q" class="input" type="text" placeholder="Type your message..." autocomplete="off" required>
+            <button class="send" id="sendBtn" type="submit">Send</button>
+            <input type="file" id="hiddenImage" accept="image/*" style="display:none;">
+            <input type="file" id="hiddenFile" style="display:none;">
+        </form>
+    </main>
+</div>
+
+<script>
+let currentLang = localStorage.getItem('lang') || 'en';
+let currentTheme = localStorage.getItem('theme') || 'dark';
+const msgs=document.getElementById('msgs'), input=document.getElementById('q');
+
+/* Sidebar toggle */
+const sidebar=document.getElementById('sidebar');
+const main=document.getElementById('main');
+const toggleSidebarBtn=document.getElementById('toggleSidebarBtn');
+function setSidebar(collapsed){
+  if(collapsed){ sidebar.classList.add('collapsed'); main.classList.add('full'); }
+  else{ sidebar.classList.remove('collapsed'); main.classList.remove('full'); }
+  localStorage.setItem('sidebar_collapsed', collapsed ? '1' : '0');
+}
+toggleSidebarBtn.addEventListener('click', ()=> setSidebar(!sidebar.classList.contains('collapsed')));
+(function(){ const saved=localStorage.getItem('sidebar_collapsed')==='1'; setSidebar(saved); })();
+
+/* Kebab menu */
+const kebabBtn=document.getElementById('kebabBtn'), kebabMenu=document.getElementById('kebabMenu');
+function showKebab(s){ kebabMenu.style.display=s?'block':'none'; kebabMenu.setAttribute('aria-hidden', s?'false':'true'); }
+kebabBtn.addEventListener('click', e=>{ e.stopPropagation(); showKebab(kebabMenu.style.display!=='block'); });
+
+/* User menu */
+const userMenuBtn=document.getElementById('userMenuBtn'), userMenu=document.getElementById('userMenu');
+function showUserMenu(s){ userMenu.style.display=s?'block':'none'; userMenu.setAttribute('aria-hidden', s?'false':'true'); }
+userMenuBtn.addEventListener('click', e=>{ e.stopPropagation(); showUserMenu(userMenu.style.display!=='block'); });
+
+/* Close popups */
+document.addEventListener('click', (e)=>{
+  const t=e.target;
+  if(!userMenu.contains(t) && !userMenuBtn.contains(t)) showUserMenu(false);
+  if(!kebabMenu.contains(t) && !kebabBtn.contains(t)) showKebab(false);
+  if(!(t.closest && (t.closest('#plusMenu')||t.closest('#plusBtn')))) document.getElementById('plusMenu').style.display='none';
+});
+
+/* Theme */
+const themeSelect=document.getElementById('themeSelect');
+function applyTheme(theme){
+  currentTheme=theme; localStorage.setItem('theme', theme);
+  const d=document.documentElement.style;
+  if(theme==='light'){
+    d.setProperty('--bg','#f7f7f7'); d.setProperty('--fg','#111');
+    d.setProperty('--panel','#ffffff'); d.setProperty('--msgs','#ffffff');
+    d.setProperty('--botbg','#111'); d.setProperty('--botfg','#fff');
+    d.setProperty('--sep','#ddd'); d.setProperty('--sidebar','#ffffff');
+    d.setProperty('--border','#ddd'); d.setProperty('--input-bg','#ffffff');
+    d.setProperty('--placeholder','#666'); d.setProperty('--plus-bg','#222');
+    /* تحسّين وضوح القائمة في الوضع الفاتح */
+    d.setProperty('--ctl-bg','#ffffff');
+    d.setProperty('--ctl-fg','#111');
+    d.setProperty('--ctl-border','#cccccc');
+  }else{
+    d.setProperty('--bg','#101010'); d.setProperty('--fg','#ddd');
+    d.setProperty('--panel','#141414'); d.setProperty('--msgs','#2a2a2a');
+    d.setProperty('--botbg','#303030'); d.setProperty('--botfg','#eee');
+    d.setProperty('--sep','#333'); d.setProperty('--sidebar','#0f0f0f');
+    d.setProperty('--border','#222'); d.setProperty('--input-bg','#1f1f1f');
+    d.setProperty('--placeholder','#aaa'); d.setProperty('--plus-bg','#1f1f1f');
+    d.setProperty('--ctl-bg','#2a2a2a');
+    d.setProperty('--ctl-fg','#ddd');
+    d.setProperty('--ctl-border','#2c2c2c');
+  }
+}
+themeSelect.value=currentTheme;
+themeSelect.addEventListener('change', e=>{ applyTheme(e.target.value); input.focus(); });
+
+/* i18n */
+const i18n = {
+  ar: { appTitle:"Almamlaka TV chatbot", chats:"المحادثات", newChat:"محادثة جديدة",
+        shareChat:"مشاركة المحادثة", copyChat:"نسخ المحادثة", downloadChat:"تنزيل المحادثة .txt",
+        addImage:"إضافة صورة", attachFile:"إرفاق ملف", langLbl:"اللغة", themeLbl:"الوضع",
+        archive:"أرشفة المحادثة الحالية", logout:"تسجيل الخروج", welcome:"مرحباً بك! اكتب سؤالك لبدء المحادثة.",
+        typing:"يكتب...", send:"إرسال", placeholder:"اكتب رسالتك هنا..." },
+  en: { appTitle:"Almamlaka TV chatbot", chats:"Chats", newChat:"New chat",
+        shareChat:"Share conversation", copyChat:"Copy conversation", downloadChat:"Download .txt",
+        addImage:"Add image", attachFile:"Attach file", langLbl:"Language", themeLbl:"Theme",
+        archive:"Archive current chat", logout:"Log out", welcome:"Welcome! Type a question to start.",
+        typing:"Typing...", send:"Send", placeholder:"Type your message..." }
+};
+const languageSelect=document.getElementById('languageSelect');
+function applyLanguage(lang){
+  currentLang=lang; localStorage.setItem('lang',lang);
+  const t=i18n[lang]||i18n.en;
+  document.getElementById('appTitle').textContent=t.appTitle;
+  document.getElementById('sbSectionLabel').textContent=t.chats;
+  const nc=document.getElementById('newChatBtn'); if(nc) nc.textContent=t.newChat;
+  document.getElementById('shareChatBtn').textContent=t.shareChat;
+  document.getElementById('copyChatBtn').textContent=t.copyChat;
+  document.getElementById('downloadChatBtn').textContent=t.downloadChat;
+  document.getElementById('pickImage').textContent=t.addImage;
+  document.getElementById('attachFile').textContent=t.attachFile;
+  document.getElementById('lblLanguage').textContent=t.langLbl;
+  document.getElementById('lblTheme').textContent=t.themeLbl;
+  const w=document.getElementById('welcome'); if(w) w.textContent=t.welcome;
+  document.getElementById('sendBtn').textContent=t.send;
+  input.placeholder=t.placeholder;
+}
+languageSelect.value=currentLang;
+languageSelect.addEventListener('change', e=>{ applyLanguage(e.target.value); input.focus(); });
+
+/* Plus: image + file */
+const plusBtn=document.getElementById('plusBtn'), plusMenu=document.getElementById('plusMenu');
+const pickImageBtn=document.getElementById('pickImage'), attachFileBtn=document.getElementById('attachFile');
+const hiddenImage=document.getElementById('hiddenImage'), hiddenFile=document.getElementById('hiddenFile');
+plusBtn.addEventListener('click', e=>{ e.stopPropagation(); plusMenu.style.display=plusMenu.style.display==='flex'?'none':'flex'; plusMenu.style.flexDirection='column'; });
+pickImageBtn.addEventListener('click', ()=>hiddenImage.click());
+hiddenImage.addEventListener('change', async ()=>{
+  if(!hiddenImage.files||hiddenImage.files.length===0) return;
+  const fd=new FormData(); fd.append('image', hiddenImage.files[0]);
+  try{ const res=await fetch('/upload',{method:'POST',body:fd}); const data=await res.json(); if(data.image_url){ appendImage(data.image_url); } }catch(e){}
+  hiddenImage.value=''; input.focus();
+});
+attachFileBtn.addEventListener('click', ()=> hiddenFile.click());
+hiddenFile.addEventListener('change', async ()=>{
+  if(!hiddenFile.files||hiddenFile.files.length===0) return;
+  const fd=new FormData(); fd.append('file', hiddenFile.files[0]);
+  try{
+    const res=await fetch('/upload_file',{method:'POST',body:fd});
+    const data=await res.json();
+    if(data.file_url){
+      const url=data.file_url;
+      if(/\.(png|jpe?g|gif|webp|bmp|svg)$/i.test(url)) appendImage(url);
+      else appendMessage((currentLang==='en'?'Uploaded: ':'تم رفع الملف: ')+url,'bot-message');
+    }else{
+      appendMessage(data.message|| (currentLang==='en'?'Upload failed':'تعذر الرفع'),'bot-message');
+    }
+  }catch(e){ appendMessage(currentLang==='en'?'Upload failed':'تعذر الرفع','bot-message'); }
+  hiddenFile.value='';
+});
+
+/* Message utils */
+function scrollBottom(){ msgs.scrollTop=msgs.scrollHeight; }
+function escapeHtml(s){ return s.replace(/[&<"'>]/g, m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+function paragraphs(t){ return t.split(/\\n+/).map(x=>'<p style="margin:0 0 6px 0">'+escapeHtml(x)+'</p>').join(''); }
+function appendMessage(text, cls){
+  const d=document.createElement('div'); d.className='message '+cls;
+  const actions = cls.includes('bot')
+      ? '<div class="msg-actions">'
+          +'<button onclick="copyText(this)"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="9" y="9" width="11" height="11" rx="2"/><rect x="4" y="4" width="11" height="11" rx="2"/></svg></span>'+(currentLang==='en'?'Copy':'نسخ')+'</button>'
+          +'<button onclick="shareMsg(this)"><span class="icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M7 10l5-5 5 5"/><path d="M19 19H5"/></svg></span>'+(currentLang==='en'?'Share':'مشاركة')+'</button>'
+        +'</div>'
+      : '';
+  d.innerHTML='<div class="msg-text">'+paragraphs(text)+'</div>'+actions;
+  msgs.appendChild(d); scrollBottom();
+}
+function appendImage(url){
+  const d=document.createElement('div'); d.className='message bot-message img-bubble'; d.innerHTML='<img src="'+url+'" alt="صورة"/>';
+  msgs.appendChild(d); scrollBottom();
+}
+window.copyText=function(el){ const t=el.closest('.message').querySelector('.msg-text').innerText; navigator.clipboard.writeText(t); el.textContent=(currentLang==='en'?'Copied':'تم النسخ'); setTimeout(()=>el.textContent=(currentLang==='en'?'Copy':'نسخ'),900); input.focus(); }
+window.shareMsg=async function(el){ const t=el.closest('.message').querySelector('.msg-text').innerText; try{ if(navigator.share){ await navigator.share({title:'Reply',text:t}); } else { await navigator.clipboard.writeText(t); alert(currentLang==='en'?'Copied for sharing':'تم نسخ النص للمشاركة'); } }catch(e){} input.focus(); }
+
+/* Chat export */
+function collectChatText(){
+  const userLbl=(currentLang==='en'?'User':'المستخدم');
+  const sysLbl=(currentLang==='en'?'System':'النظام');
+  const lines=[]; document.querySelectorAll('.message').forEach(m=>{ const role=m.classList.contains('user-message')?userLbl:sysLbl; const t=m.querySelector('.msg-text')?m.querySelector('.msg-text').innerText:(m.innerText||''); if(t.trim()) lines.push(role+': '+t.trim()); });
+  return lines.join('\\n\\n');
+}
+document.getElementById('shareChatBtn').addEventListener('click', async ()=>{ const text=collectChatText(); try{ if(navigator.share){ await navigator.share({title:'Chat',text}); } else { await navigator.clipboard.writeText(text); alert(currentLang==='en'?'Copied to clipboard':'تم نسخ المحادثة'); } }catch(e){} showKebab(false); });
+document.getElementById('copyChatBtn').addEventListener('click', async ()=>{ await navigator.clipboard.writeText(collectChatText()); alert(currentLang==='en'?'Copied':'تم النسخ'); showKebab(false); });
+document.getElementById('downloadChatBtn').addEventListener('click', ()=>{ const text=collectChatText(); const blob=new Blob([text],{type:'text/plain;charset=utf-8'}); const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download='chat.txt'; document.body.appendChild(a); a.click(); a.remove(); URL.revokeObjectURL(url); showKebab(false); });
+
+/* Send */
+document.getElementById('chatForm').addEventListener('submit', async (e)=>{
+  e.preventDefault();
+  const w=document.getElementById('welcome'); if(w) w.remove();
+  const text=input.value.trim(); if(!text) return;
+  appendMessage(text,'user-message');
+  const typing=document.createElement('div'); typing.className='message bot-message'; typing.id='typing'; typing.innerHTML='<div class="msg-text"><p>'+ (currentLang==='en'?'Typing...':'يكتب...') +'</p></div>'; msgs.appendChild(typing); scrollBottom();
+  input.value='';
+  await sendToAPI(text);
+});
+async function sendToAPI(text){
+  try{
+    const res=await fetch('/api/reply',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({q:text})});
+    const data=await res.json(); const t=document.getElementById('typing'); if(t) t.remove();
+    appendMessage((data.reply||''),'bot-message');
+  }catch(err){ const t=document.getElementById('typing'); if(t) t.remove(); appendMessage(currentLang==='en'?'Connection error':'حدث خطأ في الاتصال.','bot-message'); }
+  input.focus();
+}
+
+/* Init */
+applyTheme(currentTheme);
+applyLanguage(currentLang);
+</script>
+</body>
+</html>
+'''
+
