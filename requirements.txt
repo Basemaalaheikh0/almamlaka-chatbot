@@ -6,3 +6,6 @@ pandas
 sentence-transformers
 faiss-cpu
 gunicorn
+openpyxl
+
+
